@@ -1,0 +1,21 @@
+{
+  "name": "opu-websocket-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WebSocket relay between the Yii2 backend and the deliveryman_opu / customer apps. Yii2 controllers POST to /opu/<event>; this server fans the payload out over Socket.IO rooms.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
