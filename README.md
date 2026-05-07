@@ -94,6 +94,60 @@ location / {
 
 A `Dockerfile` is included for container deploys.
 
+## Mantener el servicio "caliente" en Render free tier
+
+Render free tier suspende el contenedor tras ~15 min sin tráfico HTTP. La
+primera petición tras el sleep dispara un cold-start de ~30–60 s, lo que en
+la práctica significa que el primer evento websocket llega tarde (o que
+los clientes timeoutean si su `connect_timeout` es bajo).
+
+Este server trae dos mecanismos para mitigarlo:
+
+### 1. Self keep-warm (incluido)
+
+Mientras el proceso esté vivo, hace `HEAD https://<url>/ping` cada
+`KEEP_WARM_INTERVAL_MS` (default 10 min). Eso cuenta como tráfico HTTP
+para Render y evita que duerma.
+
+En Render no necesitas configurar nada: la plataforma inyecta
+`RENDER_EXTERNAL_URL` automáticamente y el server la detecta. En otros
+hosts:
+
+```
+KEEP_WARM_URL=https://socket.opu.mx
+KEEP_WARM_INTERVAL_MS=600000   # 10 min — mínimo permitido: 60_000
+```
+
+Para desactivarlo, no setees ninguna de las dos variables (o setea
+`KEEP_WARM_URL=`). Para verificar que está activo: `GET /health` devuelve
+`keep_warm.enabled` y el target.
+
+> ⚠ Importante: el self keep-warm sólo funciona mientras el proceso está
+> corriendo. Si por cualquier motivo el contenedor se duerme (deploy
+> fallido, reinicio, panic en Node, etc.), el self keep-warm muere con él.
+> Por eso hay un segundo mecanismo:
+
+### 2. Monitor externo (recomendado además)
+
+Un servicio externo gratuito que pinge `/ping` cada 5–10 min. Si el server
+se duerme, el monitor lo despierta. Opciones:
+
+- **cron-job.org** — gratis, intervalo mínimo 1 min.
+- **UptimeRobot** — gratis hasta 50 monitores cada 5 min.
+- **BetterStack** — free tier hasta 10 monitores cada 3 min.
+
+Configuración: `HEAD https://socket.opu.mx/ping`, esperar 200.
+
+### Endpoint `/ping`
+
+Mínimo absoluto (sin parsing JSON, sin DB, sin lookups), pensado para que
+los pings sean baratísimos:
+
+```bash
+curl https://socket.opu.mx/ping        # → pong (text/plain)
+curl -I https://socket.opu.mx/ping     # → 200, body vacío (HEAD)
+```
+
 ## Adding a new event
 
 1. The Yii2 controller POSTs to `{$websocketUrl}/opu/my-new-event` with

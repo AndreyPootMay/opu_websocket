@@ -19,8 +19,26 @@ const PORT = parseInt(process.env.PORT || '4000', 10);
 const DEBUG = process.env.DEBUG_EVENTS === '1';
 const CORS_ORIGINS = (process.env.CORS_ORIGINS || '*').split(',').map((s) => s.trim());
 
+// Self keep-warm: en Render free tier el servicio se duerme tras ~15 min sin
+// tráfico HTTP. Mientras este proceso esté vivo, golpea su propia URL pública
+// cada KEEP_WARM_INTERVAL_MS para que Render lo vea activo y no lo duerma.
+//
+// Cuando corre en Render, RENDER_EXTERNAL_URL viene inyectada automáticamente.
+// En cualquier otro host, se puede forzar con KEEP_WARM_URL.
+const KEEP_WARM_URL = (
+  process.env.KEEP_WARM_URL ||
+  process.env.RENDER_EXTERNAL_URL ||
+  ''
+).replace(/\/$/, '');
+const KEEP_WARM_INTERVAL_MS = Math.max(
+  60_000,
+  parseInt(process.env.KEEP_WARM_INTERVAL_MS || '600000', 10), // 10 min default
+);
+
 const app = express();
 app.disable('x-powered-by');
+app.disable('etag');                  // /ping y /health son triviales — etag no aporta y consume CPU al boot
+app.set('trust proxy', true);         // detrás del LB de Render: que socket.io vea la IP real del cliente
 app.use(express.json({ limit: '512kb' }));
 app.use(cors({ origin: CORS_ORIGINS.includes('*') ? true : CORS_ORIGINS }));
 
@@ -107,9 +125,25 @@ function matchesIdentity(roomName, identity) {
   return false;
 }
 
-// ─── Health check ────────────────────────────────────────────────────────
+// ─── Liveness / health ───────────────────────────────────────────────────
+// /ping — mínimo absoluto. No parsea JSON, devuelve text/plain. Pensado
+// para que monitores externos (UptimeRobot, cron-job.org, etc.) lo golpeen
+// con HEAD muy frecuentemente sin gastar CPU. También lo usa el self
+// keep-warm de abajo.
+app.get('/ping', (_req, res) => {
+  res.type('text/plain').send('pong');
+});
+app.head('/ping', (_req, res) => {
+  res.status(200).end();
+});
+
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, sockets: io.engine.clientsCount });
+  res.json({
+    ok: true,
+    sockets: io.engine.clientsCount,
+    uptime_s: Math.round(process.uptime()),
+    keep_warm: KEEP_WARM_URL ? { enabled: true, target: `${KEEP_WARM_URL}/ping`, interval_ms: KEEP_WARM_INTERVAL_MS } : { enabled: false },
+  });
 });
 
 // ─── Webhook endpoints ───────────────────────────────────────────────────
@@ -177,6 +211,50 @@ app.get('/opu', (_req, res) => {
   res.json({ events: Object.keys(EVENT_ROUTES) });
 });
 
+// ─── Self keep-warm ──────────────────────────────────────────────────────
+// Render free tier duerme el contenedor tras ~15 min sin tráfico HTTP. Este
+// loop hace HEAD a la URL pública del propio servicio para que Render lo
+// vea activo. NO sirve si el contenedor ya está dormido (no hay proceso que
+// haga el ping) — para esos casos usar además un monitor externo gratuito
+// como cron-job.org o UptimeRobot que apunte a /ping.
+function startKeepWarm() {
+  if (!KEEP_WARM_URL) {
+    console.log('[keep-warm] disabled (set RENDER_EXTERNAL_URL o KEEP_WARM_URL para activarlo)');
+    return;
+  }
+  if (typeof fetch !== 'function') {
+    console.warn('[keep-warm] global fetch no disponible — se requiere Node ≥18');
+    return;
+  }
+
+  const target = `${KEEP_WARM_URL}/ping`;
+  const tick = async () => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 10_000);
+    try {
+      const res = await fetch(target, { method: 'HEAD', signal: ctrl.signal });
+      if (DEBUG) console.log(`[keep-warm] ${target} → ${res.status}`);
+    } catch (err) {
+      if (DEBUG) console.warn(`[keep-warm] ping falló: ${err && err.message}`);
+    } finally {
+      clearTimeout(t);
+    }
+  };
+
+  // Jitter para no sincronizar con otros instancias / deploys.
+  const jitter = Math.floor(Math.random() * 30_000);
+  setTimeout(() => {
+    tick();
+    setInterval(tick, KEEP_WARM_INTERVAL_MS).unref();
+  }, jitter).unref();
+
+  console.log(
+    `[keep-warm] enabled — HEAD ${target} cada ${Math.round(KEEP_WARM_INTERVAL_MS / 1000)}s ` +
+    `(primer tick en ${Math.round(jitter / 1000)}s)`,
+  );
+}
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`opu-websocket-server listening on :${PORT} (debug=${DEBUG ? 'on' : 'off'})`);
+  startKeepWarm();
 });
