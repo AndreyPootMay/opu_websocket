@@ -88,7 +88,9 @@ function joinFromIdentity(socket, identity) {
 
 function leaveFromIdentity(socket, identity) {
   const left = [];
-  for (const room of Object.keys(socket.rooms)) {
+  // socket.rooms is a Set in Socket.IO v4, and we mutate it via socket.leave —
+  // snapshot first so the iterator doesn't trip over the mutation.
+  for (const room of [...socket.rooms]) {
     if (room === socket.id) continue;
     if (identity.all || matchesIdentity(room, identity)) {
       socket.leave(room); left.push(room);
