@@ -153,6 +153,14 @@ const EVENT_ROUTES = {
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
     p.support_ticket_id && ROOM.supportTicket(p.support_ticket_id),
   ],
+
+  // Driver flipped their availability toggle. Routed to the driver's own
+  // room (for cross-device confirmation) and the per-driver room is the
+  // only listener — admin dashboards that want a global "who's online"
+  // view should listen for the event name directly via the broadcast path.
+  'deliveryman-status-changed': (p) => [
+    p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+  ],
 };
 
 function roomsForEvent(eventName, payload) {
