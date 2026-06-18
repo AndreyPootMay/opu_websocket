@@ -32,7 +32,7 @@ const KEEP_WARM_URL = (
 ).replace(/\/$/, '');
 const KEEP_WARM_INTERVAL_MS = Math.max(
   60_000,
-  parseInt(process.env.KEEP_WARM_INTERVAL_MS || '600000', 10), // 10 min default
+  parseInt(process.env.KEEP_WARM_INTERVAL_MS || '300000', 10), // 5 min default
 );
 
 const app = express();
