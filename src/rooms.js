@@ -26,14 +26,25 @@ const EVENT_ROUTES = {
     p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
     p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
   ],
+  'order-reassigned-to-deliveryman': (p) => [
+    p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+    p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
+  ],
+  'new-order': (p) => [
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
+    p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
+  ],
   'order-in-preparation': (p) => [
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
     p.customer_auth_id && ROOM.customer(p.customer_auth_id),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
     p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
   ],
   'order-ready-for-pickup': (p) => [
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
     p.customer_auth_id && ROOM.customer(p.customer_auth_id),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
     p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
   ],
   'order-cancelled-by-customer': (p) => [
@@ -68,6 +79,17 @@ const EVENT_ROUTES = {
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
     p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
   ],
+  'order-accepted-by-deliveryman': (p) => [
+    p.customer_auth_id && ROOM.customer(p.customer_auth_id),
+    p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
+    p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
+  ],
+  'order-rejected-by-deliveryman': (p) => [
+    p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
+    p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
+  ],
   'deliveryman-arrived-at-store': (p) => [
     p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
@@ -76,41 +98,49 @@ const EVENT_ROUTES = {
   'order-picked-up': (p) => [
     p.customer_auth_id && ROOM.customer(p.customer_auth_id),
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
     p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
   ],
   'order-picked-up-by-deliveryman': (p) => [
     p.customer_auth_id && ROOM.customer(p.customer_auth_id),
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
     p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
   ],
   'order-on-the-way': (p) => [
     p.customer_auth_id && ROOM.customer(p.customer_auth_id),
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
     p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
   ],
   'deliveryman-arrived-at-customer': (p) => [
     p.customer_auth_id && ROOM.customer(p.customer_auth_id),
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
     p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
   ],
   'deliveryman-arrival-at-customer': (p) => [
     p.customer_auth_id && ROOM.customer(p.customer_auth_id),
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
     p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
   ],
   'order-delivered': (p) => [
     p.customer_auth_id && ROOM.customer(p.customer_auth_id),
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
     p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
   ],
   'order-delivered-to-customer': (p) => [
     p.customer_auth_id && ROOM.customer(p.customer_auth_id),
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
     p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
   ],
   'delivery-failed': (p) => [
     p.customer_auth_id && ROOM.customer(p.customer_auth_id),
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+    p.subsidiary_id && ROOM.subsidiary(p.subsidiary_id),
     p.buy_order_uuid && ROOM.order(p.buy_order_uuid),
   ],
   'delivery-issue-reported': (p) => [

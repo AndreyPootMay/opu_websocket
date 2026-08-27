@@ -171,23 +171,22 @@ app.post('/opu/:event', (req, res) => {
       });
     }
 
+    // Deliver to every room the router computed from THIS validated payload
+    // (deliveryman + customer + subsidiary + order, each independently scoped
+    // by its own id field inside rooms.js) — not just the required identity's
+    // room. The only thing "private" gates is the fallback below: a private
+    // event NEVER falls through to `io.emit('global:...')`, so a malformed
+    // payload can't leak to every connected socket. A validly-populated
+    // payload reaching multiple legitimately-scoped rooms is not a leak.
     const targetRooms = roomsForEvent(event, payload);
-    const scopedRoom = ROOM[idField === 'deliveryman_auth_id' ? 'deliveryman'
-      : idField === 'customer_auth_id' ? 'customer'
-      : idField === 'subsidiary_id' ? 'subsidiary'
-      : 'partner'](idValue);
-
-    // Defense-in-depth: even if the routing table somehow widens, the
-    // emit list is filtered to rooms scoped to *this* recipient's identity.
-    const safeRooms = targetRooms.filter((r) => r === scopedRoom);
-    for (const room of safeRooms) {
+    for (const room of targetRooms) {
       io.to(room).emit(event, payload);
     }
 
     return res.json({
       ok: true,
       event,
-      rooms: safeRooms,
+      rooms: targetRooms,
       knownEvent: !!EVENT_ROUTES[event],
       private: true,
     });
