@@ -191,6 +191,25 @@ const EVENT_ROUTES = {
   'deliveryman-status-changed': (p) => [
     p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
   ],
+
+  // Admin force-logged-out this driver (token row deleted server-side). The
+  // client tears down its session on receipt; server.js additionally hard
+  // -disconnects the socket in this room so a client that ignores the event
+  // (bug, old app version) still stops receiving further driver-room events.
+  'force-logout': (p) => [
+    p.deliveryman_auth_id && ROOM.deliveryman(p.deliveryman_auth_id),
+  ],
+
+  // Same admin-triggered kick as 'force-logout', for the other two actor
+  // types with their own opaque-token table (customer_auth_token /
+  // partner_auth_token). Kept as distinct event names — each carries a
+  // different identity field — rather than overloading 'force-logout'.
+  'force-logout-customer': (p) => [
+    p.customer_auth_id && ROOM.customer(p.customer_auth_id),
+  ],
+  'force-logout-partner': (p) => [
+    p.partner_auth_id && ROOM.partner(p.partner_auth_id),
+  ],
 };
 
 function roomsForEvent(eventName, payload) {
@@ -212,6 +231,9 @@ const PRIVATE_EVENTS = {
   'order-ready-for-pickup': 'deliveryman_auth_id',
   'order-in-preparation': 'deliveryman_auth_id',
   'cash-payment-confirmed': 'deliveryman_auth_id',
+  'force-logout': 'deliveryman_auth_id',
+  'force-logout-customer': 'customer_auth_id',
+  'force-logout-partner': 'partner_auth_id',
 };
 
 function isPrivateEvent(eventName) {

@@ -183,6 +183,16 @@ app.post('/opu/:event', (req, res) => {
       io.to(room).emit(event, payload);
     }
 
+    // force-logout* is a security-sensitive kick: don't just rely on the
+    // client to honor the event (old app version, bug). Hard-disconnect
+    // every socket in the room too, so no further room events can reach
+    // that connection even if it ignores the emit above.
+    if (event === 'force-logout' || event === 'force-logout-customer' || event === 'force-logout-partner') {
+      for (const room of targetRooms) {
+        io.in(room).disconnectSockets(true);
+      }
+    }
+
     return res.json({
       ok: true,
       event,
